@@ -1,0 +1,38 @@
+FROM ubuntu:latest
+
+WORKDIR /app
+COPY . .
+
+# Install dependencies
+RUN apt-get update && \
+    apt-get install -y wget bzip2 && \
+    rm -rf /var/lib/apt/lists/*
+
+# Install Miniconda with Python 3.11
+RUN wget https://repo.anaconda.com/miniconda/Miniconda3-py39_4.10.3-Linux-x86_64.sh -O miniconda.sh && \
+    bash miniconda.sh -b -p /opt/conda && \
+    rm miniconda.sh && \
+    /opt/conda/bin/conda install -y python=3.11 && \
+    /opt/conda/bin/conda clean -afy && \
+    rm -rf /root/.cache/pip/* && \
+    rm -rf /root/.cache/conda/*
+
+# Set up shell
+RUN /opt/conda/bin/conda init bash
+
+# Create conda environment and install packages
+RUN /bin/bash -c "/opt/conda/bin/conda create -y --name myenv python=3.11 && \
+                  source /opt/conda/etc/profile.d/conda.sh && \
+                  conda activate myenv && \
+                  /opt/conda/bin/conda install -y pip && \
+                  /opt/conda/envs/myenv/bin/pip install -r requirements.txt && \
+                  /opt/conda/bin/conda install -y jupyter && \
+                  conda deactivate"
+
+# Set environment variables
+ENV PATH /opt/conda/envs/myenv/bin:$PATH
+ENV LANG C.UTF-8
+ENV LC_ALL C.UTF-8
+
+# Set entrypoint
+ENTRYPOINT ["/bin/bash", "-c", "/opt/conda/bin/conda activate myenv && jupyter notebook --ip=0.0.0.0 --port=8888 --no-browser --allow-root"]
